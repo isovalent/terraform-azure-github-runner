@@ -11,7 +11,10 @@ resource "azurerm_storage_account" "gh_webhook_event_handler_app_storage" {
   account_tier             = "Standard"
   account_replication_type = "LRS"
   min_tls_version          = "TLS1_2"
-  tags                     = var.tags
+  tags = merge(
+    var.tags,
+    var.sa_tags
+  )
 }
 
 resource "azurerm_service_plan" "gh_webhook_event_handler_app_service_plan" {

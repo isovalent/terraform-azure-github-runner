@@ -47,3 +47,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "sa_tags" {
+  description = "Map of tags that will be added to the storage account."
+  type        = map(string)
+  default     = {}
+}

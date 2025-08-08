@@ -126,6 +126,7 @@ module "github_webhook_event_handler_function_app" {
   azure_tenant_id                     = var.azure_tenant_id
   azure_secrets_key_vault_resource_id = var.azure_secrets_key_vault_resource_id
   tags                                = var.tags
+  sa_tags                             = var.sa_tags
 
 
   depends_on = [
