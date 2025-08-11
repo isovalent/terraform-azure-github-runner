@@ -22,11 +22,12 @@ resource "azurerm_linux_web_app" "gh_webhook_runner_controller_app" {
 
   site_config {
     application_stack {
-      docker_image     = "${var.docker_registry_url}/${var.runner_controller_image_name}"
-      docker_image_tag = var.runner_controller_image_tag
+      docker_image_name  = "${var.runner_controller_image_name}:${var.runner_controller_image_tag}"
+      docker_registry_url = var.docker_registry_url
     }
 
     health_check_path = "/health"
+    health_check_eviction_time_in_min = 5
   }
 
   https_only = true
