@@ -23,7 +23,7 @@ resource "azurerm_linux_web_app" "gh_webhook_runner_controller_app" {
   site_config {
     application_stack {
       docker_image_name  = "${var.runner_controller_image_name}:${var.runner_controller_image_tag}"
-      docker_registry_url = var.docker_registry_url
+      docker_registry_url = "https://${var.docker_registry_url}"
     }
 
     health_check_path = "/health"
