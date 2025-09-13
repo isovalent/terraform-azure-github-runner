@@ -11,10 +11,16 @@ resource "azurerm_storage_account" "gh_webhook_event_handler_app_storage" {
   account_tier             = "Standard"
   account_replication_type = "LRS"
   min_tls_version          = "TLS1_2"
-  tags = merge(
-    var.tags,
-    var.sa_tags
-  )
+
+  allow_nested_items_to_be_public = false
+
+  tags = var.tags
+}
+
+resource "azurerm_role_assignment" "gh_webhook_event_handler_app_storage_blob_data_contributor" {
+  scope                = azurerm_storage_account.gh_webhook_event_handler_app_storage.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_linux_function_app.gh_webhook_event_handler_app.identity[0].principal_id
 }
 
 resource "azurerm_service_plan" "gh_webhook_event_handler_app_service_plan" {

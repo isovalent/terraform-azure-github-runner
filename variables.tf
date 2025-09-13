@@ -184,12 +184,6 @@ variable "tags" {
   default     = {}
 }
 
-variable "sa_tags" {
-  description = "Map of tags that will be added to the storage account."
-  type        = map(string)
-  default     = {}
-}
-
 variable "azure_location" {
   description = "The location in which to create resources. Will default to the resource group's location."
   type        = string

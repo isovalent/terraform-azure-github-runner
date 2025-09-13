@@ -126,8 +126,6 @@ module "github_webhook_event_handler_function_app" {
   azure_secrets_key_vault_resource_id  = var.azure_secrets_key_vault_resource_id
   azure_secrets_key_vault_rbac_enabled = var.azure_secrets_key_vault_rbac_enabled
   tags                                 = var.tags
-  sa_tags                              = var.sa_tags
-
 
   depends_on = [
     module.service_bus
