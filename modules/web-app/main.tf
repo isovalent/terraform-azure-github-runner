@@ -33,15 +33,16 @@ resource "azurerm_linux_web_app" "gh_webhook_runner_controller_app" {
   https_only = true
 
   app_settings = {
+    AZURE_LOG_LEVEL                  = var.log_level
     AZURE_APP_CONFIGURATION_ENDPOINT = var.app_configuration_endpoint
     DOCKER_ENABLE_CI                 = "true"
-    #DOCKER_REGISTRY_SERVER_URL       = "https://${var.docker_registry_url}"
+    #DOCKER_REGISTRY_SERVER_URL          = "https://${var.docker_registry_url}"
 
   }
 
   logs {
     application_logs {
-      file_system_level = var.log_level
+      file_system_level = title(var.log_level == "info" ? "Information" : var.log_level)
     }
   }
 

@@ -80,6 +80,10 @@ variable "web_app_sku_name" {
 }
 
 variable "log_level" {
+  validation {
+    condition     = contains(["verbose", "info", "warning", "error"], var.log_level)
+    error_message = "log_level must be one of: verbose, info, warning, error"
+  }
   type = string
 }
 

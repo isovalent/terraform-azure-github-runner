@@ -112,14 +112,16 @@ module "github_webhook_event_handler_function_app" {
 
   name_suffix = local.name_suffix
 
-  github_webhook_events_queue_id       = module.service_bus.github_webhook_events_queue_id
-  app_configuration_endpoint           = module.app_config.app_configuration_endpoint
-  azure_app_configuration_object_id    = module.app_config.azure_app_configuration_object_id
-  azure_resource_group_name            = data.azurerm_resource_group.resource_group.name
-  azure_resource_group_location        = local.location
-  docker_registry_url                  = var.docker_registry_url
-  event_handler_image_name             = var.event_handler_image_name
-  event_handler_image_tag              = var.event_handler_image_tag
+  github_webhook_events_queue_id    = module.service_bus.github_webhook_events_queue_id
+  app_configuration_endpoint        = module.app_config.app_configuration_endpoint
+  azure_app_configuration_object_id = module.app_config.azure_app_configuration_object_id
+  azure_resource_group_name         = data.azurerm_resource_group.resource_group.name
+  azure_resource_group_location     = local.location
+  docker_registry_url               = var.docker_registry_url
+  event_handler_image_name          = var.event_handler_image_name
+  event_handler_image_tag           = var.event_handler_image_tag
+  log_level                         = var.log_level
+
   azure_tenant_id                      = var.azure_tenant_id
   azure_secrets_key_vault_resource_id  = var.azure_secrets_key_vault_resource_id
   azure_secrets_key_vault_rbac_enabled = var.azure_secrets_key_vault_rbac_enabled

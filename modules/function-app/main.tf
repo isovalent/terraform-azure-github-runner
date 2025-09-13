@@ -37,6 +37,7 @@ resource "azurerm_linux_function_app" "gh_webhook_event_handler_app" {
     "DOCKER_ENABLE_CI"                    = "true"
     "AZURE_APP_CONFIGURATION_ENDPOINT"    = var.app_configuration_endpoint
     "WEBSITES_ENABLE_APP_SERVICE_STORAGE" = "false"
+    "AZURE_LOG_LEVEL"                     = var.log_level
   }
 
   identity {
