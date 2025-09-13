@@ -13,30 +13,17 @@ locals {
 #tfsec:ignore:azure-keyvault-specify-network-acl
 #tfsec:ignore:azure-keyvault-no-purge
 resource "azurerm_key_vault" "github_runner_registration_keyvault" {
-  name                = "kv-gh-run-reg${local.name_suffix}"
+  name                = "registration-vault${local.name_suffix}"
   location            = local.location
   resource_group_name = data.azurerm_resource_group.resource_group.name
   tenant_id           = var.azure_tenant_id
+
+  rbac_authorization_enabled = var.azure_registration_key_vault_rbac_enabled
 
   sku_name = "standard"
 
   soft_delete_retention_days = 7
   tags                       = var.tags
-}
-
-resource "azurerm_key_vault_access_policy" "app_secrets_key_vault_access_policy" {
-  for_each = toset(var.owners)
-
-  key_vault_id = azurerm_key_vault.github_runner_registration_keyvault.id
-  tenant_id    = var.azure_tenant_id
-  object_id    = each.value
-
-  secret_permissions = [
-    "Delete",
-    "Get",
-    "List",
-    "Set"
-  ]
 }
 
 resource "azurerm_user_assigned_identity" "github_runner_shared_identity" {
@@ -48,6 +35,8 @@ resource "azurerm_user_assigned_identity" "github_runner_shared_identity" {
 }
 
 resource "azurerm_key_vault_access_policy" "github_runner_identity_key_vault_access_policy" {
+  count = var.azure_registration_key_vault_rbac_enabled ? 0 : 1
+
   key_vault_id = azurerm_key_vault.github_runner_registration_keyvault.id
   tenant_id    = var.azure_tenant_id
   object_id    = azurerm_user_assigned_identity.github_runner_shared_identity.principal_id
@@ -55,6 +44,14 @@ resource "azurerm_key_vault_access_policy" "github_runner_identity_key_vault_acc
   secret_permissions = [
     "Get",
   ]
+}
+
+resource "azurerm_role_assignment" "github_runner_identity_key_vault_role_assignment" {
+  count = var.azure_registration_key_vault_rbac_enabled ? 1 : 0
+
+  scope                = azurerm_key_vault.github_runner_registration_keyvault.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.github_runner_shared_identity.principal_id
 }
 
 module "service_bus" {
@@ -115,18 +112,19 @@ module "github_webhook_event_handler_function_app" {
 
   name_suffix = local.name_suffix
 
-  github_webhook_events_queue_id      = module.service_bus.github_webhook_events_queue_id
-  app_configuration_endpoint          = module.app_config.app_configuration_endpoint
-  azure_app_configuration_object_id   = module.app_config.azure_app_configuration_object_id
-  azure_resource_group_name           = data.azurerm_resource_group.resource_group.name
-  azure_resource_group_location       = local.location
-  docker_registry_url                 = var.docker_registry_url
-  event_handler_image_name            = var.event_handler_image_name
-  event_handler_image_tag             = var.event_handler_image_tag
-  azure_tenant_id                     = var.azure_tenant_id
-  azure_secrets_key_vault_resource_id = var.azure_secrets_key_vault_resource_id
-  tags                                = var.tags
-  sa_tags                             = var.sa_tags
+  github_webhook_events_queue_id       = module.service_bus.github_webhook_events_queue_id
+  app_configuration_endpoint           = module.app_config.app_configuration_endpoint
+  azure_app_configuration_object_id    = module.app_config.azure_app_configuration_object_id
+  azure_resource_group_name            = data.azurerm_resource_group.resource_group.name
+  azure_resource_group_location        = local.location
+  docker_registry_url                  = var.docker_registry_url
+  event_handler_image_name             = var.event_handler_image_name
+  event_handler_image_tag              = var.event_handler_image_tag
+  azure_tenant_id                      = var.azure_tenant_id
+  azure_secrets_key_vault_resource_id  = var.azure_secrets_key_vault_resource_id
+  azure_secrets_key_vault_rbac_enabled = var.azure_secrets_key_vault_rbac_enabled
+  tags                                 = var.tags
+  sa_tags                              = var.sa_tags
 
 
   depends_on = [
@@ -149,17 +147,19 @@ module "github_runner_controller_web_app" {
   runner_controller_image_tag  = var.runner_controller_image_tag
   log_level                    = var.log_level
 
-  azure_app_configuration_object_id        = module.app_config.azure_app_configuration_object_id
-  app_configuration_endpoint               = module.app_config.app_configuration_endpoint
-  github_runners_service_bus_id            = module.service_bus.service_bus_namespace_id
-  github_runners_queue_id                  = module.service_bus.github_runners_queue_id
-  github_state_queue_id                    = module.service_bus.github_state_queue_id
-  azure_tenant_id                          = var.azure_tenant_id
-  azure_secrets_key_vault_resource_id      = var.azure_secrets_key_vault_resource_id
-  azure_registration_key_vault_resource_id = azurerm_key_vault.github_runner_registration_keyvault.id
-  azure_gallery_image_type                 = var.azure_gallery_image_type
-  azure_gallery_image_id                   = var.azure_gallery_image_id
-  tags                                     = var.tags
+  azure_app_configuration_object_id         = module.app_config.azure_app_configuration_object_id
+  app_configuration_endpoint                = module.app_config.app_configuration_endpoint
+  github_runners_service_bus_id             = module.service_bus.service_bus_namespace_id
+  github_runners_queue_id                   = module.service_bus.github_runners_queue_id
+  github_state_queue_id                     = module.service_bus.github_state_queue_id
+  azure_tenant_id                           = var.azure_tenant_id
+  azure_secrets_key_vault_resource_id       = var.azure_secrets_key_vault_resource_id
+  azure_secrets_key_vault_rbac_enabled      = var.azure_secrets_key_vault_rbac_enabled
+  azure_registration_key_vault_resource_id  = azurerm_key_vault.github_runner_registration_keyvault.id
+  azure_registration_key_vault_rbac_enabled = var.azure_registration_key_vault_rbac_enabled
+  azure_gallery_image_type                  = var.azure_gallery_image_type
+  azure_gallery_image_id                    = var.azure_gallery_image_id
+  tags                                      = var.tags
 }
 
 // TODO: app service with managed identity (MSI)

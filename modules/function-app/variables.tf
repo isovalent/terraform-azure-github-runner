@@ -34,6 +34,10 @@ variable "azure_secrets_key_vault_resource_id" {
   type = string
 }
 
+variable "azure_secrets_key_vault_rbac_enabled" {
+  type = bool
+}
+
 variable "azure_tenant_id" {
   type = string
 }
@@ -53,3 +57,4 @@ variable "sa_tags" {
   type        = map(string)
   default     = {}
 }
+

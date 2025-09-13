@@ -111,6 +111,8 @@ resource "azurerm_role_assignment" "function_app_configuration_data_reader" {
 }
 
 resource "azurerm_key_vault_access_policy" "app_secrets_key_vault_access_policy" {
+  count = var.azure_secrets_key_vault_rbac_enabled ? 0 : 1
+
   key_vault_id = var.azure_secrets_key_vault_resource_id
   tenant_id    = var.azure_tenant_id
   object_id    = azurerm_linux_function_app.gh_webhook_event_handler_app.identity[0].principal_id
@@ -118,4 +120,13 @@ resource "azurerm_key_vault_access_policy" "app_secrets_key_vault_access_policy"
   secret_permissions = [
     "Get",
   ]
+}
+
+resource "azurerm_role_assignment" "app_secrets_key_vault_role_assignment" {
+  count = var.azure_secrets_key_vault_rbac_enabled ? 1 : 0
+
+  scope                = var.azure_secrets_key_vault_resource_id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_linux_function_app.gh_webhook_event_handler_app.identity[0].principal_id
+
 }

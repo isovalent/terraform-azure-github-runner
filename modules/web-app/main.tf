@@ -22,11 +22,11 @@ resource "azurerm_linux_web_app" "gh_webhook_runner_controller_app" {
 
   site_config {
     application_stack {
-      docker_image_name  = "${var.runner_controller_image_name}:${var.runner_controller_image_tag}"
+      docker_image_name   = "${var.runner_controller_image_name}:${var.runner_controller_image_tag}"
       docker_registry_url = "https://${var.docker_registry_url}"
     }
 
-    health_check_path = "/health"
+    health_check_path                 = "/health"
     health_check_eviction_time_in_min = 5
   }
 
@@ -145,6 +145,8 @@ resource "azurerm_role_assignment" "web_app_app_configuration_data_reader" {
 }
 
 resource "azurerm_key_vault_access_policy" "app_secrets_key_vault_access_policy" {
+  count = var.azure_secrets_key_vault_rbac_enabled ? 0 : 1
+
   key_vault_id = var.azure_secrets_key_vault_resource_id
   tenant_id    = var.azure_tenant_id
   object_id    = azurerm_linux_web_app.gh_webhook_runner_controller_app.identity[0].principal_id
@@ -154,7 +156,17 @@ resource "azurerm_key_vault_access_policy" "app_secrets_key_vault_access_policy"
   ]
 }
 
+resource "azurerm_role_assignment" "app_secrets_key_vault_role_assignment" {
+  count = var.azure_secrets_key_vault_rbac_enabled ? 1 : 0
+
+  scope                = var.azure_secrets_key_vault_resource_id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_linux_web_app.gh_webhook_runner_controller_app.identity[0].principal_id
+}
+
 resource "azurerm_key_vault_access_policy" "app_registration_key_vault_access_policy" {
+  count = var.azure_registration_key_vault_rbac_enabled ? 0 : 1
+
   key_vault_id = var.azure_registration_key_vault_resource_id
   tenant_id    = var.azure_tenant_id
   object_id    = azurerm_linux_web_app.gh_webhook_runner_controller_app.identity[0].principal_id
@@ -164,4 +176,12 @@ resource "azurerm_key_vault_access_policy" "app_registration_key_vault_access_po
     "Set",
     "Delete",
   ]
+}
+
+resource "azurerm_role_assignment" "app_registration_key_vault_role_assignment" {
+  count = var.azure_registration_key_vault_rbac_enabled ? 1 : 0
+
+  scope                = var.azure_registration_key_vault_resource_id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = azurerm_linux_web_app.gh_webhook_runner_controller_app.identity[0].principal_id
 }

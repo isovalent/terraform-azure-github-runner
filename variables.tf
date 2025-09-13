@@ -107,6 +107,16 @@ variable "azure_secrets_key_vault_resource_id" {
   type = string
 }
 
+variable "azure_secrets_key_vault_rbac_enabled" {
+  type    = bool
+  default = false
+}
+
+variable "azure_registration_key_vault_rbac_enabled" {
+  type    = bool
+  default = false
+}
+
 variable "azure_runner_default_password_key_vault_id" {
   type = string
 }
@@ -176,8 +186,8 @@ variable "tags" {
 
 variable "sa_tags" {
   description = "Map of tags that will be added to the storage account."
-  type = map(string)
-  default = {}
+  type        = map(string)
+  default     = {}
 }
 
 variable "azure_location" {
