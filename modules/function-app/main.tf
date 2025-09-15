@@ -32,7 +32,7 @@ resource "azurerm_service_plan" "gh_webhook_event_handler_app_service_plan" {
 }
 
 resource "azurerm_linux_function_app" "gh_webhook_event_handler_app" {
-  name                       = "func-github-webhook-event-handler${var.name_suffix}"
+  name                       = "event-handler-${var.name_suffix}"
   resource_group_name        = var.azure_resource_group_name
   location                   = var.azure_resource_group_location
   storage_account_name       = azurerm_storage_account.gh_webhook_event_handler_app_storage.name
@@ -76,6 +76,24 @@ resource "azurerm_linux_function_app" "gh_webhook_event_handler_app" {
   tags = var.tags
 }
 
+# Create a Log Analytics workspace for Application Insights
+resource "azurerm_log_analytics_workspace" "gh_webhook_log_analytics_workspace" {
+  name                = "webhook-law-${var.name_suffix}"
+  location            = var.azure_resource_group_location
+  resource_group_name = var.azure_resource_group_name
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
+}
+
+# Create an Application Insights instance for monitoring
+resource "azurerm_application_insights" "gh_webhook_application_insights" {
+  name                = "webhook-ai-${var.name_suffix}"
+  location            = var.azure_resource_group_location
+  resource_group_name = var.azure_resource_group_name
+  application_type    = "web"
+  workspace_id        = azurerm_log_analytics_workspace.gh_webhook_log_analytics_workspace.id
+}
+
 data "azurerm_function_app_host_keys" "default" {
   name                = trimsuffix(azurerm_linux_function_app.gh_webhook_event_handler_app.default_hostname, ".azurewebsites.net")
   resource_group_name = var.azure_resource_group_name
@@ -117,21 +135,7 @@ resource "azurerm_role_assignment" "function_app_configuration_data_reader" {
   ]
 }
 
-resource "azurerm_key_vault_access_policy" "app_secrets_key_vault_access_policy" {
-  count = var.azure_secrets_key_vault_rbac_enabled ? 0 : 1
-
-  key_vault_id = var.azure_secrets_key_vault_resource_id
-  tenant_id    = var.azure_tenant_id
-  object_id    = azurerm_linux_function_app.gh_webhook_event_handler_app.identity[0].principal_id
-
-  secret_permissions = [
-    "Get",
-  ]
-}
-
 resource "azurerm_role_assignment" "app_secrets_key_vault_role_assignment" {
-  count = var.azure_secrets_key_vault_rbac_enabled ? 1 : 0
-
   scope                = var.azure_secrets_key_vault_resource_id
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_linux_function_app.gh_webhook_event_handler_app.identity[0].principal_id
