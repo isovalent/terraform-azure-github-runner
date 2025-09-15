@@ -1,4 +1,4 @@
-FROM node:18-slim AS build
+FROM node:22-slim AS build
 
 WORKDIR /usr/src/app
 COPY . .
@@ -7,10 +7,9 @@ EXPOSE 80
 
 RUN yarn --production
 
-FROM gcr.io/distroless/nodejs:18
+FROM gcr.io/distroless/nodejs22-debian12
 
 ENV NODE_ENV=production
-LABEL org.opencontainers.image.source=https://github.com/liatrio/terraform-azure-github-runner
 
 COPY --from=build /usr/src/app /usr/src/app
 WORKDIR /usr/src/app

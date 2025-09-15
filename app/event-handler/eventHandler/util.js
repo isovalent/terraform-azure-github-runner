@@ -3,7 +3,7 @@ import { setLogLevel } from "@azure/logger";
 import { AppConfigurationClient, parseSecretReference } from "@azure/app-configuration";
 import { SecretClient, parseKeyVaultSecretIdentifier } from "@azure/keyvault-secrets";
 import { ServiceBusClient } from "@azure/service-bus";
-import crypto from "node:crypto";
+import { Webhooks } from "@octokit/webhooks";
 
 const config = {};
 const _secretClients = {};
@@ -55,7 +55,7 @@ export const validateRequest = async (context, request) => {
         return false;
     }
 
-    return validateRequestSignature(request);
+    return true;
 };
 
 const validateRequestWorkflowJobLabels = async (context, request) => {
@@ -72,20 +72,22 @@ const validateRequestWorkflowJobLabels = async (context, request) => {
     return labels.every((label) => defaultRunnerLabels.has(label.toLowerCase()) || githubRunnerLabels.has(label));
 };
 
-const validateRequestSignature = async (request) => {
+export const validateRequestSignature = async (context, request) => {
     const webhookSecret = await getSecretValue("github-webhook-secret");
     const actualSignature = request.headers["x-hub-signature-256"];
+    const webhooks = new Webhooks({ secret: webhookSecret });
 
-    if (!actualSignature) {
+    if (
+        await webhooks.verify(JSON.stringify(request.body), actualSignature).catch((e) => {
+            context.log.verbose('Unable to verify signature!', { e });
+            return false;
+        })
+    ) {
+        return true;
+    } else {
+        context.log.verbose('Unable to verify signature!', { actualSignature, body: request.body });
         return false;
     }
-
-    const expectedSignature = `sha256=${crypto
-        .createHmac("sha256", webhookSecret)
-        .update(JSON.stringify(request.body))
-        .digest("hex")}`;
-
-    return expectedSignature === actualSignature;
 };
 
 const createServiceBusClient = async (context) => new ServiceBusClient(

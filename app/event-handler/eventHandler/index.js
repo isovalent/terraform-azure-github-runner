@@ -1,30 +1,36 @@
-import { validateRequest, getWebHookEventsQueueSender } from "./util.js";
+import { validateRequest, validateRequestSignature, getWebHookEventsQueueSender } from "./util.js";
 
 export const eventHandler = async function (context, req) {
     context.log.verbose("JavaScript HTTP trigger function processed a request.", req.body);
 
-    const isValid = await validateRequest(context, req);
-    let response;
-
-    if (isValid) {
-        response = {
-            // status: 200, /* Defaults to 200 */
-            body: `Valid webhook message received. Queued [${req.body?.workflow_job?.run_url}] for processing`,
+    if (await validateRequestSignature(context, req).catch((e) => {
+        context.log.error("Error validating request signature", e);
+        context.res = {
+            status: 500,
+            body: "Unable to validate request signature",
+        };
+        return;
+    })) {
+        context.res = {
+            status: 200,
+            body: "Valid webhook message received. Queued for processing",
         };
 
-        const sender = await getWebHookEventsQueueSender(context);
+        const isValid = await validateRequest(context, req);
+        if (isValid) {
+            const sender = await getWebHookEventsQueueSender(context);
 
-        await sender.sendMessages({
-            body: req.body,
-        });
-        context.log.verbose("Placed message on queue", sender);
+            await sender.sendMessages({
+                body: req.body,
+            });
+            context.log.verbose("Placed message on queue", sender);
+        }
+
     } else {
-        response = {
-            status: 403, /* Defaults to 200 */
-            body: "Discarding invalid request",
+        context.res = {
+            status: 403,
+            body: "Invalid request signature",
         };
+        return;
     }
-
-    context.log.verbose("prepared response", response);
-    context.res = response;
 };
