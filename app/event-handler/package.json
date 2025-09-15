@@ -2,7 +2,7 @@
     "name": "terraform-azure-github-runner-event-handler",
     "version": "0.1.0",
     "description": "Handler for webhook events sent from GitHub App",
-    "main": "eventHandler/index.js",
+    "main": "webhook/index.js",
     "type": "module",
     "scripts": {
       "lint": "eslint .",
@@ -23,6 +23,7 @@
     "homepage": "https://github.com/liatrio/terraform-azure-github-runner#readme",
     "dependencies": {
       "@azure/app-configuration": "^1.9.0",
+      "@azure/functions": "^4.8.0",
       "@azure/identity": "^4.12.0",
       "@azure/keyvault-secrets": "^4.10.0",
       "@azure/logger": "^1.3.0",
@@ -32,6 +33,6 @@
     "devDependencies": {
       "azure-functions-core-tools": "^4.x",
       "@liatrio/eslint-config": "^1.3.0",
-      "eslint": "^8.22.0"
+      "eslint": "^8.9.0"
     }
   }

@@ -1,6 +1,6 @@
 locals {
   suffix            = trimprefix(var.name_suffix, "-")
-  function_name     = "eventHandler"
+  function_name     = "webhook"
   function_key_name = "default"
 }
 

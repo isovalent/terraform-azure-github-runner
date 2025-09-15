@@ -18,38 +18,34 @@ if (process.env.AZURE_LOG_LEVEL) {
     setLogLevel(process.env.AZURE_LOG_LEVEL);
 }
 
-export const validateRequest = async (context, request) => {
-    context.log.verbose("Starting validateRequest with request", request);
-
+export const validateRequest = async (data, context) => {
     let installationId;
 
-    if (!request.body || !request.body.action || !request.body.workflow_job) {
-        context.log.warn("Lacking body, body.action, or body.workflow_job");
-
+    if (!data.action || !data.workflow_job || !data.installation || !data.installation.id) {
+        context.warn("Lacking data, data.action, or data.workflow_job, or data.installation.id");
         return false;
     }
 
     try {
-        context.log.verbose("App Config Endpoint from AZURE_APP_CONFIGURATION_ENDPOINT env var", process.env.AZURE_APP_CONFIGURATION_ENDPOINT);
+        context.debug("App Config Endpoint from AZURE_APP_CONFIGURATION_ENDPOINT env var", process.env.AZURE_APP_CONFIGURATION_ENDPOINT);
         installationId = await getConfigValue("github-installation-id", context);
-        context.log.verbose("Retrieved installationId from config", installationId);
+        context.debug("Retrieved installationId from config", installationId);
     } catch (error) {
-        context.log.error("Failure retrieving config value to try to match installation id. Exception", error);
+        context.error("Failure retrieving config value to try to match installation id. Exception", error);
     }
 
-    if (installationId !== request.body?.installation?.id?.toString()) {
-        context.log.error("Installation ID doesn't match config");
-
+    if (installationId !== data.installation.id?.toString()) {
+        context.error("Installation ID doesn't match config");
         return false;
     }
 
-    const allRequestedRunnerLabelsMatch = await validateRequestWorkflowJobLabels(context, request);
-    context.log.verbose("Checked runner label match, with result", allRequestedRunnerLabelsMatch);
+    const allRequestedRunnerLabelsMatch = await validateRequestWorkflowJobLabels(data, context);
+    context.debug("Checked runner label match, with result", allRequestedRunnerLabelsMatch);
 
     if (!allRequestedRunnerLabelsMatch) {
-        context.log.verbose({
-            workflowJobId: request.body.workflow_job.id,
-            workflowJobLabels: request.body.workflow_job.labels,
+        context.debug({
+            workflowJobId: data.workflow_job.id,
+            workflowJobLabels: data.workflow_job.labels,
         }, "Requested labels do not match labels of self-hosted runners");
 
         return false;
@@ -58,13 +54,13 @@ export const validateRequest = async (context, request) => {
     return true;
 };
 
-const validateRequestWorkflowJobLabels = async (context, request) => {
+const validateRequestWorkflowJobLabels = async (data, context) => {
     const githubRunnerLabelsString = await getConfigValue("github-runner-labels", context);
     const githubRunnerLabels = new Set(JSON.parse(githubRunnerLabelsString));
-    const { labels } = request.body.workflow_job;
+    const { labels } = data.workflow_job;
 
     if (labels.length === 0) {
-        context.log.verbose("0 length labels array found");
+        context.debug("0 length labels array found");
 
         return false;
     }
@@ -72,22 +68,10 @@ const validateRequestWorkflowJobLabels = async (context, request) => {
     return labels.every((label) => defaultRunnerLabels.has(label.toLowerCase()) || githubRunnerLabels.has(label));
 };
 
-export const validateRequestSignature = async (context, request) => {
+export const validateRequestSignature = async (data, signature) => {
     const webhookSecret = await getSecretValue("github-webhook-secret");
-    const actualSignature = request.headers["x-hub-signature-256"];
     const webhooks = new Webhooks({ secret: webhookSecret });
-
-    if (
-        await webhooks.verify(JSON.stringify(request.body), actualSignature).catch((e) => {
-            context.log.verbose('Unable to verify signature!', { e });
-            return false;
-        })
-    ) {
-        return true;
-    } else {
-        context.log.verbose('Unable to verify signature!', { actualSignature, body: request.body });
-        return false;
-    }
+    return webhooks.verify(data, signature);
 };
 
 const createServiceBusClient = async (context) => new ServiceBusClient(
@@ -105,7 +89,7 @@ const getServiceBusClient = async (context) => {
 
 const getConfigValue = async (key, context) => {
     if (!config[key]) {
-        context.log.verbose("Attempting getConfigValue with key", key, context);
+        context.debug("Attempting getConfigValue with key", key, context);
 
         const appConfigClient = getAppConfigurationClient();
 
@@ -116,7 +100,7 @@ const getConfigValue = async (key, context) => {
         config[key] = value;
     }
 
-    context.log.verbose("Returning config[key]", config[key]);
+    context.debug("Returning config[key]", config[key]);
 
     return config[key];
 };
