@@ -6,7 +6,7 @@ locals {
 }
 
 resource "azurerm_service_plan" "gh_webhook_runner_controller_app_service_plan" {
-  name                = "plan-github-webhook-runner-controller${var.name_suffix}"
+  name                = "${var.name}-plan-runner-controller"
   resource_group_name = var.azure_resource_group_name
   location            = var.location
   os_type             = var.web_app_os_type
@@ -15,7 +15,7 @@ resource "azurerm_service_plan" "gh_webhook_runner_controller_app_service_plan" 
 }
 
 resource "azurerm_linux_web_app" "gh_webhook_runner_controller_app" {
-  name                = "web-app-github-webhook-runner-controller${var.name_suffix}"
+  name                = "${var.name}-webhook-runner-controller"
   resource_group_name = var.azure_resource_group_name
   location            = var.location
   service_plan_id     = azurerm_service_plan.gh_webhook_runner_controller_app_service_plan.id

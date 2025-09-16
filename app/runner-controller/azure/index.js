@@ -4,6 +4,8 @@ import { getNetworkClient } from "./clients/network.js";
 import { getComputeClient } from "./clients/compute.js";
 import { getLogger } from "../logger.js";
 
+const ed25519PublicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILuel5MSGqiFDUZ/y5t2Fo/2GUMILph0yCfhwJCCEc3t";
+
 export const createKeyVaultSecret = async (secretName, secretValue) => {
     const keyVaultUrl = await getConfigValue("azure-registration-key-vault-url");
     const client = getSecretClient(keyVaultUrl);
@@ -28,11 +30,41 @@ const createNetworkInterface = async (name) => {
         getConfigValue("github-runner-identifier-label"),
     ]);
 
+    const sshNetworkSecurityGroup = await client.networkSecurityGroups.beginCreateOrUpdateAndWait(
+        resourceGroupName,
+        name,
+        {
+            location: location,
+            tags: {
+                "managed-by": runnerIdentifierLabel,
+            },
+        },
+    );
+
+    const inboundSecurityRuleParams = {
+        protocol: "Tcp",
+        sourcePortRange: "*",
+        destinationPortRange: "22", // SSH port
+        sourceAddressPrefix: "151.186.192.4/32",
+        destinationAddressPrefix: "*",
+        access: "Allow",
+        priority: 100, // Lower priority means higher precedence
+        direction: "Inbound",
+    };
+
+    await client.securityRules.beginCreateOrUpdateAndWait(
+        resourceGroupName,
+        name,
+        "Allow-SSH-From-Host",
+        inboundSecurityRuleParams,
+    );
+
     const response = await client.networkInterfaces.beginCreateOrUpdateAndWait(
         resourceGroupName,
         name,
         {
             location,
+            networkSecurityGroup: { id: sshNetworkSecurityGroup.id },
             ipConfigurations: [
                 {
                     name,
@@ -142,8 +174,17 @@ export const createVM = async (name) => {
             osProfile: {
                 computerName: name,
                 adminUsername: "runner-admin",
-                adminPassword,
-                customData,
+                adminPassword: adminPassword,
+                customData: customData,
+                linuxConfiguration: {
+                    disablePasswordAuthentication: true,
+                    ssh: {
+                        publicKeys: [{
+                            path: "/home/runner-admin/.ssh/authorized_keys",
+                            keyData: ed25519PublicKey,
+                        }],
+                    },
+                },
             },
             tags: {
                 "managed-by": runnerIdentifierLabel,

@@ -38,7 +38,7 @@ locals {
 data "azurerm_client_config" "current" {}
 
 resource "azurerm_app_configuration" "github_runner_app_config" {
-  name                = "appcs-gh-run-controller${var.name_suffix}"
+  name                = "${var.name}-app-config"
   location            = var.azure_resource_group_location
   resource_group_name = var.azure_resource_group_name
 

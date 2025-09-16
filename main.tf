@@ -1,5 +1,14 @@
 locals {
-  name_suffix = var.name_suffix == "" ? "" : "-${trimprefix(var.name_suffix, "-")}"
+  prefix      = "${var.name}-${random_string.name.result}"
+}
+
+# Random String for unique naming of resources
+resource "random_string" "name" {
+  length  = 8
+  special = false
+  upper   = false
+  lower   = true
+  numeric = true
 }
 
 data "azurerm_resource_group" "resource_group" {
@@ -13,7 +22,7 @@ locals {
 #tfsec:ignore:azure-keyvault-specify-network-acl
 #tfsec:ignore:azure-keyvault-no-purge
 resource "azurerm_key_vault" "github_runner_registration_keyvault" {
-  name                = "registration-vault${local.name_suffix}"
+  name                = "${local.prefix}-key-vault"
   location            = local.location
   resource_group_name = data.azurerm_resource_group.resource_group.name
   tenant_id           = var.azure_tenant_id
@@ -30,7 +39,7 @@ resource "azurerm_user_assigned_identity" "github_runner_shared_identity" {
   location            = local.location
   resource_group_name = data.azurerm_resource_group.resource_group.name
 
-  name = "msi-github-runner-shared-identity${local.name_suffix}"
+  name = "${local.prefix}-shared-identity"
   tags = var.tags
 }
 
@@ -51,11 +60,11 @@ resource "azurerm_role_assignment" "github_runner_identity_key_vault_role_assign
 
 module "service_bus" {
   source = "./modules/service-bus"
+  name   = local.prefix
 
   service_bus_owners = var.owners
 
   github_runner_identifier_label = var.github_runner_identifier_label
-  name_suffix                    = local.name_suffix
   azure_resource_group_location  = local.location
   azure_resource_group_name      = data.azurerm_resource_group.resource_group.name
   tags                           = var.tags
@@ -63,8 +72,7 @@ module "service_bus" {
 
 module "app_config" {
   source = "./modules/app-config"
-
-  name_suffix = local.name_suffix
+  name   = local.prefix
 
   azure_app_config_owners = var.owners
 
@@ -104,8 +112,7 @@ module "app_config" {
 
 module "github_webhook_event_handler_function_app" {
   source = "./modules/function-app"
-
-  name_suffix = local.name_suffix
+  name   = local.prefix
 
   github_webhook_events_queue_id    = module.service_bus.github_webhook_events_queue_id
   app_configuration_endpoint        = module.app_config.app_configuration_endpoint
@@ -128,8 +135,7 @@ module "github_webhook_event_handler_function_app" {
 
 module "github_runner_controller_web_app" {
   source = "./modules/web-app"
-
-  name_suffix = local.name_suffix
+  name   = local.prefix
 
   azure_resource_group_name    = data.azurerm_resource_group.resource_group.name
   azure_resource_group_id      = data.azurerm_resource_group.resource_group.id
