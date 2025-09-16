@@ -1,4 +1,4 @@
-variable "name_suffix" {
+variable "name" {
   type = string
 }
 
@@ -55,10 +55,6 @@ variable "github_organization" {
 }
 
 variable "github_installation_id" {
-  type = string
-}
-
-variable "github_runner_version" {
   type = string
 }
 

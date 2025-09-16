@@ -1,11 +1,11 @@
 locals {
-  suffix            = trimprefix(var.name_suffix, "-")
+  suffix            = replace(var.name, "-", "")
   function_name     = "webhook"
   function_key_name = "default"
 }
 
 resource "azurerm_storage_account" "gh_webhook_event_handler_app_storage" {
-  name                     = "sarunners${local.suffix}"
+  name                     = "${local.suffix}stgacct"
   resource_group_name      = var.azure_resource_group_name
   location                 = var.azure_resource_group_location
   account_tier             = "Standard"
@@ -24,7 +24,7 @@ resource "azurerm_role_assignment" "gh_webhook_event_handler_app_storage_blob_da
 }
 
 resource "azurerm_service_plan" "gh_webhook_event_handler_app_service_plan" {
-  name                = "plan-github-webhook-event-handler${var.name_suffix}"
+  name                = "${var.name}-plan-event-handler"
   resource_group_name = var.azure_resource_group_name
   location            = var.azure_resource_group_location
   os_type             = "Linux"
@@ -32,7 +32,7 @@ resource "azurerm_service_plan" "gh_webhook_event_handler_app_service_plan" {
 }
 
 resource "azurerm_linux_function_app" "gh_webhook_event_handler_app" {
-  name                       = "event-handler-${var.name_suffix}"
+  name                       = "${var.name}-func-event-handler"
   resource_group_name        = var.azure_resource_group_name
   location                   = var.azure_resource_group_location
   storage_account_name       = azurerm_storage_account.gh_webhook_event_handler_app_storage.name
@@ -40,10 +40,14 @@ resource "azurerm_linux_function_app" "gh_webhook_event_handler_app" {
   service_plan_id            = azurerm_service_plan.gh_webhook_event_handler_app_service_plan.id
 
   app_settings = {
-    "DOCKER_ENABLE_CI"                    = "true"
-    "AZURE_APP_CONFIGURATION_ENDPOINT"    = var.app_configuration_endpoint
-    "WEBSITES_ENABLE_APP_SERVICE_STORAGE" = "false"
-    "AZURE_LOG_LEVEL"                     = var.log_level
+    "DOCKER_ENABLE_CI"                      = "true"
+    "WEBSITES_ENABLE_APP_SERVICE_STORAGE"   = "false"
+    "FUNCTIONS_WORKER_RUNTIME"              = "node"
+    "AZURE_APP_CONFIGURATION_ENDPOINT"      = var.app_configuration_endpoint
+    "AZURE_LOG_LEVEL"                       = var.log_level
+    "APPINSIGHTS_INSTRUMENTATIONKEY"        = azurerm_application_insights.gh_webhook_application_insights.instrumentation_key
+    "APPLICATIONINSIGHTS_CONNECTION_STRING" = azurerm_application_insights.gh_webhook_application_insights.connection_string
+    "AzureWebJobsStorage"                   = azurerm_storage_account.gh_webhook_event_handler_app_storage.primary_connection_string
   }
 
   identity {
@@ -78,7 +82,7 @@ resource "azurerm_linux_function_app" "gh_webhook_event_handler_app" {
 
 # Create a Log Analytics workspace for Application Insights
 resource "azurerm_log_analytics_workspace" "gh_webhook_log_analytics_workspace" {
-  name                = "webhook-law-${var.name_suffix}"
+  name                = "${var.name}-law-event-handler"
   location            = var.azure_resource_group_location
   resource_group_name = var.azure_resource_group_name
   sku                 = "PerGB2018"
@@ -87,7 +91,7 @@ resource "azurerm_log_analytics_workspace" "gh_webhook_log_analytics_workspace" 
 
 # Create an Application Insights instance for monitoring
 resource "azurerm_application_insights" "gh_webhook_application_insights" {
-  name                = "webhook-ai-${var.name_suffix}"
+  name                = "${var.name}-ai-event-handler"
   location            = var.azure_resource_group_location
   resource_group_name = var.azure_resource_group_name
   application_type    = "web"

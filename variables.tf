@@ -1,4 +1,4 @@
-variable "name_suffix" {
+variable "name" {
   type = string
 }
 
@@ -77,11 +77,6 @@ variable "github_runner_username" {
   default = "ubuntu"
 }
 
-variable "github_runner_version" {
-  type    = string
-  default = "2.295.0"
-}
-
 variable "github_runner_labels" {
   type    = list(string)
   default = ["azure", "vm"]
@@ -95,12 +90,12 @@ variable "github_runner_identifier_label" {
 
 variable "github_runner_warm_pool_size" {
   type    = number
-  default = 3
+  default = 1
 }
 
 variable "github_runner_maximum_count" {
   type    = number
-  default = 5
+  default = 2
 }
 
 variable "azure_secrets_key_vault_resource_id" {

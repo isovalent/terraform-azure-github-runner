@@ -1,5 +1,5 @@
 resource "azurerm_servicebus_namespace" "github_runner_queues" {
-  name                = "sb-github-runner-queues${var.name_suffix}"
+  name                = "${var.name}-service-bus"
   location            = var.azure_resource_group_location
   resource_group_name = var.azure_resource_group_name
   sku                 = "Basic"
@@ -13,7 +13,7 @@ resource "azurerm_servicebus_namespace" "github_runner_queues" {
 }
 
 resource "azurerm_servicebus_queue" "github_webhook_events" {
-  name         = "sbq-github-webhook-events"
+  name         = "sbq-webhook-events"
   namespace_id = azurerm_servicebus_namespace.github_runner_queues.id
 }
 

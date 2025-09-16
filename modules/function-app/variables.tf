@@ -14,7 +14,7 @@ variable "azure_resource_group_location" {
   type = string
 }
 
-variable "name_suffix" {
+variable "name" {
   type = string
 }
 

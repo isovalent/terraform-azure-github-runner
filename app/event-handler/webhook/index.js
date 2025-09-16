@@ -13,11 +13,6 @@ app.http("webhook", {
 
         const data = await request.json();
 
-        if (data.action != "queued") {
-            context.log("Ignoring non-queued action");
-            return { status: 200, body: "Event ignored. No need to create runner as it is not queued" };
-        }
-
         const payload = JSON.stringify(data);
         context.debug("Received payload:", payload);
         if (!(await validateRequestSignature(
@@ -34,10 +29,9 @@ app.http("webhook", {
                 body: data,
             });
             context.debug("Dispatched message to Message Bus to handle Runner Logistics", sender);
-            return { body: "Request Sent to create runner" }
+            return { body: `Request Sent to create runner for ${payload.workflow_job?.run_url}` }
         }
 
-        context.log("Cannot find a runner for this request");
-        return { body: "Cannot find a runner for this request" }
+        context.log("This request cannot be served by this stack");
     }
 });

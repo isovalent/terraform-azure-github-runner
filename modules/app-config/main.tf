@@ -38,7 +38,7 @@ locals {
 data "azurerm_client_config" "current" {}
 
 resource "azurerm_app_configuration" "github_runner_app_config" {
-  name                = "appcs-gh-run-controller${var.name_suffix}"
+  name                = "${var.name}-app-config"
   location            = var.azure_resource_group_location
   resource_group_name = var.azure_resource_group_name
 
@@ -93,7 +93,6 @@ module "custom_data" {
   source = "../custom-data"
 
   github_organization               = var.github_organization
-  github_runner_version             = var.github_runner_version
   github_runner_labels              = local.github_runner_labels
   azure_registration_key_vault_name = var.azure_registration_key_vault_name
   github_runner_username            = var.github_runner_username
