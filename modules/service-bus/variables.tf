@@ -2,7 +2,7 @@ variable "github_runner_identifier_label" {
   type = string
 }
 
-variable "name_suffix" {
+variable "name" {
   type = string
 }
 

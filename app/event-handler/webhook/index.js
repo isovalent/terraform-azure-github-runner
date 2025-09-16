@@ -34,7 +34,7 @@ app.http("webhook", {
                 body: data,
             });
             context.debug("Dispatched message to Message Bus to handle Runner Logistics", sender);
-            return { body: "Request Sent to create runner" }
+            return { body: `Request Sent to create runner for ${payload.workflow_job?.run_url}` }
         }
 
         context.log("Cannot find a runner for this request");

@@ -79,7 +79,7 @@ variable "log_level" {
   type = string
 }
 
-variable "name_suffix" {
+variable "name" {
   type = string
 }
 
