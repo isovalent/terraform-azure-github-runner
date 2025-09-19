@@ -1,6 +1,4 @@
-data "azurerm_resource_group" "resource_group" {
-  name = var.azure_resource_group_name
-}
+
 
 locals {
   location = var.azure_location == "" ? data.azurerm_resource_group.resource_group.location : var.azure_location
@@ -144,6 +142,81 @@ module "github_runner_controller_web_app" {
   azure_gallery_image_type                 = var.azure_gallery_image_type
   azure_gallery_image_id                   = var.azure_gallery_image_id
   tags                                     = var.tags
+}
+
+
+resource "azurerm_monitor_action_group" "isovalent_alerts" {
+  name                = "isovalent-runners-alerts"
+  resource_group_name = azurerm_resource_group.example.name
+  short_name          = "isorunalerts"
+
+  email_receiver {
+    name          = "sendtoadmin"
+    email_address = var.alert_email_address
+  }
+}
+
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "quota_alerts" {
+  name                    = "quota-alerts"
+  resource_group_name     = azurerm_resource_group.rg.name
+  location                = azurerm_resource_group.rg.location
+  evaluation_frequency    = "PT5M"
+  window_duration         = "PT15M"
+  scopes                  = [var.azure_subscription_id]
+  severity                = 2
+  description             = "Quota Usage Alert Rule >=85%"
+  display_name            = "Quota Usage Alert Rule"
+  enabled                 = true
+  auto_mitigation_enabled = true
+  criteria {
+    query                   = <<-QUERY
+    arg("").QuotaResources
+        | where subscriptionId =~ '${var.azure_subscription_id}'
+        | where type =~ 'microsoft.compute/locations/usages'
+        | where isnotempty(properties)
+        | mv-expand propertyJson = properties.value limit 400
+        | extend
+        usage = propertyJson.currentValue,
+        quota = propertyJson.['limit'],
+        quotaName = tostring(propertyJson.['name'].value)
+        | extend usagePercent = toint(usage)*100 / toint(quota)| project-away properties| where quotaName in~ ('Standard NCASv3_T4 Family')
+      QUERY
+    time_aggregation_method = "Maximum"
+    threshold               = 85
+    operator                = "GreaterThanOrEqual"
+
+    metric_measure_column = "usagePercent"
+    dimension {
+      name     = "location"
+      operator = "Include"
+      values   = ["*"]
+    }
+    dimension {
+      name     = "quotaName"
+      operator = "Include"
+      values   = ["Standard NCASv3_T4 Family"]
+    }
+    dimension {
+      name     = "type"
+      operator = "Include"
+      values   = ["microsoft.compute/locations/usages"]
+    }
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  action {
+    action_groups = [azurerm_monitor_action_group.isovalent_alerts.id]
+  }
+
+  identity {
+    type = "UserAssigned"
+    identity_ids = [
+      data.azurerm_client_config.current.object_id,
+    ]
+  }
 }
 
 // TODO: app service with managed identity (MSI)

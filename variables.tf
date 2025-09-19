@@ -174,3 +174,9 @@ variable "azure_location" {
   type        = string
   default     = ""
 }
+
+variable "alert_email_address" {
+  description = "The email address to send alerts to."
+  type        = string
+  default     = "sekhars@cisco.com"
+}
