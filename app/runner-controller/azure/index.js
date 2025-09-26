@@ -21,21 +21,24 @@ export const deleteKeyVaultSecret = async (secretName) => {
 const createNetworkInterface = async (name) => {
     const client = await getNetworkClient();
 
-    const [resourceGroupName, location, subnetId, runnerIdentifierLabel] = await Promise.all([
+    const [resourceGroupName, location, subnetId, runnerIdentifierLabel, runnerPrefix] = await Promise.all([
         getConfigValue("azure-resource-group-name"),
         getConfigValue("azure-location"),
         getConfigValue("azure-subnet-id"),
         getConfigValue("github-runner-identifier-label"),
+        getConfigValue("github-runner-prefix"),
     ]);
 
+    const networkInterfaceName = `${runnerPrefix.length > 0  ? runnerPrefix : resourceGroupName}-${name}-nic`;
+    const ipConfigName = `${runnerPrefix.length > 0  ? runnerPrefix : resourceGroupName}-${name}-ipconfig`;
     const response = await client.networkInterfaces.beginCreateOrUpdateAndWait(
         resourceGroupName,
-        name,
+        networkInterfaceName,
         {
             location,
             ipConfigurations: [
                 {
-                    name,
+                    name: ipConfigName,
                     subnet: {
                         id: subnetId,
                     },
@@ -64,6 +67,8 @@ export const createVM = async (name) => {
         customData,
         runnerIdentity,
         runnerIdentifierLabel,
+        runnerPrefix,
+        runnerDiskSizeGB,
     ] = await Promise.all([
         getConfigValue("azure-resource-group-name"),
         getConfigValue("azure-location"),
@@ -74,6 +79,8 @@ export const createVM = async (name) => {
         getConfigValue("custom-data-script-base64-encoded"),
         getConfigValue("github-runner-identity"),
         getConfigValue("github-runner-identifier-label"),
+        getConfigValue("github-runner-prefix"),
+        getConfigValue("github-runner-disk-size-gb"),
     ]);
 
     // See Azure docs for more info on the different Azure Compute Gallery types:
@@ -84,9 +91,11 @@ export const createVM = async (name) => {
         RBAC: "rbac",
     });
 
+    const vmName = `${runnerPrefix.length > 0  ? runnerPrefix : resourceGroupName}-${name}`;
+    const diskName = `${runnerPrefix.length > 0  ? runnerPrefix : resourceGroupName}-${name}-disk`;
     await client.virtualMachines.beginCreateOrUpdate(
         resourceGroupName,
-        name,
+        vmName,
         {
             identity: {
                 type: "UserAssigned",
@@ -126,8 +135,9 @@ export const createVM = async (name) => {
                     managedDisk: {
                         storageAccountType: "Standard_LRS",
                     },
-                    name,
+                    name: diskName,
                     createOption: "FromImage",
+                    diskSizeGB: runnerDiskSizeGB,
                     deleteOption: "Delete",
                 },
             },

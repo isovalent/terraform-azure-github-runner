@@ -2,8 +2,8 @@ locals {
 
   github_runner_identifier_label = var.github_runner_identifier_label
   app_config_keys = {
-    "azure-location"                    = var.azure_resource_group_location
-    "azure-resource-group-name"         = var.azure_resource_group_name
+    "azure-location"                    = var.azure_runner_location
+    "azure-resource-group-name"         = var.azure_runner_resource_group_name
     "azure-subnet-id"                   = var.azure_subnet_id
     "azure-subscription-id"             = var.azure_subscription_id
     "azure-registration-key-vault-url"  = var.azure_registration_key_vault_url
@@ -18,6 +18,8 @@ locals {
     "github-client-id"                  = var.github_client_id
     "github-organization"               = var.github_organization
     "github-installation-id"            = var.github_installation_id
+    "github-runner-prefix"              = var.github_runner_prefix
+    "github-runner-disk-size-gb"        = var.github_runner_disk_size_gb
     "github-runner-identity"            = var.github_runner_identity
     "github-runner-identifier-label"    = local.github_runner_identifier_label
     "github-runner-labels"              = jsonencode(var.github_runner_labels)

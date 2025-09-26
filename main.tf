@@ -20,6 +20,7 @@ resource "azurerm_key_vault" "github_runner_registration_keyvault" {
   tags                       = var.tags
 }
 
+# Used by VMs to read tokens from registration key vault
 resource "azurerm_user_assigned_identity" "github_runner_shared_identity" {
   location            = local.location
   resource_group_name = data.azurerm_resource_group.resource_group.name
@@ -65,7 +66,7 @@ module "app_config" {
   azure_registration_key_vault_url  = azurerm_key_vault.github_runner_registration_keyvault.vault_uri
   azure_resource_group_location     = local.location
   azure_resource_group_name         = data.azurerm_resource_group.resource_group.name
-  azure_subnet_id                   = var.azure_subnet_id
+  azure_subnet_id                   = module.resource_group.azure_subnet_id
   azure_subscription_id             = var.azure_subscription_id
   azure_gallery_image_id            = var.azure_gallery_image_id
   azure_vm_size                     = var.azure_vm_size
@@ -74,17 +75,21 @@ module "app_config" {
   azure_github_runners_queue        = module.service_bus.github_runners_queue
   azure_github_state_queue          = module.service_bus.github_state_queue
 
-  github_app_id                  = var.github_app_id
-  github_client_id               = var.github_client_id
-  github_organization            = var.github_organization
-  github_installation_id         = var.github_installation_id
-  github_runner_labels           = var.github_runner_labels
-  github_runner_identifier_label = var.github_runner_identifier_label
-  github_runner_username         = var.github_runner_username
-  github_runner_identity         = azurerm_user_assigned_identity.github_runner_shared_identity.id
-  github_runner_warm_pool_size   = var.github_runner_warm_pool_size
-  github_runner_maximum_count    = var.github_runner_maximum_count
-  github_runner_group            = var.github_runner_group
+  azure_runner_location            = var.azure_runner_location
+  azure_runner_resource_group_name = var.azure_runner_resource_group_name
+  github_app_id                    = var.github_app_id
+  github_client_id                 = var.github_client_id
+  github_organization              = var.github_organization
+  github_installation_id           = var.github_installation_id
+  github_runner_labels             = var.github_runner_labels
+  github_runner_identifier_label   = var.github_runner_identifier_label
+  github_runner_username           = var.github_runner_username
+  github_runner_prefix             = var.github_runner_prefix
+  github_runner_disk_size_gb       = var.github_runner_disk_size_gb
+  github_runner_identity           = azurerm_user_assigned_identity.github_runner_shared_identity.id
+  github_runner_warm_pool_size     = var.github_runner_warm_pool_size
+  github_runner_maximum_count      = var.github_runner_maximum_count
+  github_runner_group              = var.github_runner_group
 
   azure_runner_default_password_key_vault_id = var.azure_runner_default_password_key_vault_id
   github_client_secret_key_vault_id          = var.github_client_secret_key_vault_id
@@ -121,8 +126,9 @@ module "github_runner_controller_web_app" {
   source = "./modules/web-app"
   name   = var.name
 
-  azure_resource_group_name    = data.azurerm_resource_group.resource_group.name
-  azure_resource_group_id      = data.azurerm_resource_group.resource_group.id
+  azure_resource_group_name = data.azurerm_resource_group.resource_group.name
+  azure_resource_group_id   = module.resource_group.resource_group_id
+
   location                     = local.location
   web_app_os_type              = var.web_app_os_type
   web_app_sku_name             = var.web_app_sku_name
@@ -144,79 +150,31 @@ module "github_runner_controller_web_app" {
   tags                                     = var.tags
 }
 
-
-resource "azurerm_monitor_action_group" "isovalent_alerts" {
-  name                = "isovalent-runners-alerts"
-  resource_group_name = azurerm_resource_group.example.name
-  short_name          = "isorunalerts"
-
-  email_receiver {
-    name          = "sendtoadmin"
-    email_address = var.alert_email_address
-  }
+module "resource_group" {
+  source                    = "./modules/resource-group-setup"
+  name                      = var.name
+  azure_location            = var.azure_runner_location
+  azure_resource_group_name = var.azure_runner_resource_group_name
+  virtual_networks          = var.virtual_networks
+  tags                      = var.tags
+  allow_ssh_inbound         = var.allow_ssh_inbound
+  public_ip_cidr            = var.public_ip_cidr
 }
 
-resource "azurerm_monitor_scheduled_query_rules_alert_v2" "quota_alerts" {
-  name                    = "quota-alerts"
-  resource_group_name     = azurerm_resource_group.rg.name
-  location                = azurerm_resource_group.rg.location
-  evaluation_frequency    = "PT5M"
-  window_duration         = "PT15M"
-  scopes                  = [var.azure_subscription_id]
-  severity                = 2
-  description             = "Quota Usage Alert Rule >=85%"
-  display_name            = "Quota Usage Alert Rule"
-  enabled                 = true
-  auto_mitigation_enabled = true
-  criteria {
-    query                   = <<-QUERY
-    arg("").QuotaResources
-        | where subscriptionId =~ '${var.azure_subscription_id}'
-        | where type =~ 'microsoft.compute/locations/usages'
-        | where isnotempty(properties)
-        | mv-expand propertyJson = properties.value limit 400
-        | extend
-        usage = propertyJson.currentValue,
-        quota = propertyJson.['limit'],
-        quotaName = tostring(propertyJson.['name'].value)
-        | extend usagePercent = toint(usage)*100 / toint(quota)| project-away properties| where quotaName in~ ('Standard NCASv3_T4 Family')
-      QUERY
-    time_aggregation_method = "Maximum"
-    threshold               = 85
-    operator                = "GreaterThanOrEqual"
 
-    metric_measure_column = "usagePercent"
-    dimension {
-      name     = "location"
-      operator = "Include"
-      values   = ["*"]
-    }
-    dimension {
-      name     = "quotaName"
-      operator = "Include"
-      values   = ["Standard NCASv3_T4 Family"]
-    }
-    dimension {
-      name     = "type"
-      operator = "Include"
-      values   = ["microsoft.compute/locations/usages"]
-    }
-    failing_periods {
-      minimum_failing_periods_to_trigger_alert = 1
-      number_of_evaluation_periods             = 1
-    }
-  }
+module "alerts" {
+  source = "./modules/alerts"
 
-  action {
-    action_groups = [azurerm_monitor_action_group.isovalent_alerts.id]
-  }
+  alert_email_address       = var.alert_email_address
+  azure_subscription_id     = var.azure_subscription_id
+  azure_resource_group_name = data.azurerm_resource_group.resource_group.name
+  azure_location            = local.location
+  tags                      = var.tags
 
-  identity {
-    type = "UserAssigned"
-    identity_ids = [
-      data.azurerm_client_config.current.object_id,
-    ]
-  }
+  depends_on = [
+    module.github_runner_controller_web_app,
+    module.resource_group
+  ]
 }
 
 // TODO: app service with managed identity (MSI)

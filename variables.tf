@@ -14,7 +14,11 @@ variable "azure_resource_group_name" {
   type = string
 }
 
-variable "azure_subnet_id" {
+variable "azure_runner_resource_group_name" {
+  type = string
+}
+
+variable "azure_runner_location" {
   type = string
 }
 
@@ -123,6 +127,16 @@ variable "github_runner_group" {
   default = "Default"
 }
 
+variable "github_runner_prefix" {
+  type    = string
+  default = ""
+}
+
+variable "github_runner_disk_size_gb" {
+  type    = number
+  default = 150
+}
+
 variable "web_app_os_type" {
   type    = string
   default = "Linux"
@@ -179,4 +193,27 @@ variable "alert_email_address" {
   description = "The email address to send alerts to."
   type        = string
   default     = "sekhars@cisco.com"
+}
+
+variable "virtual_networks" {
+  description = "Config for virtual network and its subnets"
+  type = object({
+    name          = string
+    address_space = list(string)
+    subnets = list(object({
+      name     = string
+      prefixes = list(string)
+    }))
+  })
+}
+
+variable "allow_ssh_inbound" {
+  description = "Whether to allow inbound SSH traffic."
+  type        = bool
+  default     = true
+}
+
+variable "public_ip_cidr" {
+  description = "The CIDR block for the public IP."
+  type        = string
 }

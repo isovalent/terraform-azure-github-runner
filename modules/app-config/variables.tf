@@ -86,6 +86,15 @@ variable "github_runner_maximum_count" {
   type = number
 }
 
+variable "github_runner_prefix" {
+  type = string
+}
+
+variable "github_runner_disk_size_gb" {
+  type    = number
+  default = 150
+}
+
 variable "azure_runner_default_password_key_vault_id" {
   type = string
 }
@@ -122,4 +131,16 @@ variable "tags" {
   description = "Map of tags that will be added to created resources."
   type        = map(string)
   default     = {}
+}
+
+variable "azure_runner_location" {
+  description = "The Azure location where the GitHub runners resources should be created."
+  type        = string
+
+}
+
+variable "azure_runner_resource_group_name" {
+  description = "The name of the resource group in which to create the GitHub runners resources."
+  type        = string
+
 }

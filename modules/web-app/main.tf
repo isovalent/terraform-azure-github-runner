@@ -5,6 +5,10 @@ locals {
   azure_gallery_name           = var.azure_gallery_image_type == "rbac" ? join("/", slice(local.split_azure_gallery_image_id, 0, 5)) : "" # Capture indexes 0-4 (index 5 is excluded)
 }
 
+data "azurerm_resource_group" "management_resource_group" {
+  name = var.azure_resource_group_name
+}
+
 resource "azurerm_service_plan" "gh_webhook_runner_controller_app_service_plan" {
   name                = "${var.name}-plan-runner-controller"
   resource_group_name = var.azure_resource_group_name
@@ -66,7 +70,7 @@ resource "azurerm_role_assignment" "gh_runner_controller_app_virtual_machine_con
 }
 
 resource "azurerm_role_assignment" "gh_runner_controller_app_managed_identity_operator" {
-  scope                = var.azure_resource_group_id
+  scope                = data.azurerm_resource_group.management_resource_group.id
   role_definition_name = "Managed Identity Operator"
   principal_id         = azurerm_linux_web_app.gh_webhook_runner_controller_app.identity[0].principal_id
 
