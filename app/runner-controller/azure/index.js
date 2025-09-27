@@ -137,7 +137,7 @@ export const createVM = async (name) => {
                     },
                     name: diskName,
                     createOption: "FromImage",
-                    diskSizeGB: runnerDiskSizeGB,
+                    diskSizeGB: isNaN(parseInt(runnerDiskSizeGB)) ? 75 : parseInt(runnerDiskSizeGB),
                     deleteOption: "Delete",
                 },
             },
